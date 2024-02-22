@@ -1,0 +1,6 @@
+outs:
+- md5: fcbfa8cc7bf493f742fd702ff398bce5.dir
+  size: 228815972
+  nfiles: 2
+  hash: md5
+  path: photo2label_pix2pix_model
