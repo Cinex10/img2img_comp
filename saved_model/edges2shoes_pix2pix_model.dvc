@@ -1,0 +1,6 @@
+outs:
+- md5: 598abc1d965abb41154243d9e5870e29.dir
+  size: 228815972
+  nfiles: 2
+  hash: md5
+  path: edges2shoes_pix2pix_model
