@@ -1,0 +1,6 @@
+outs:
+- md5: def3cb7dbbbeb9e10365bbe3df185eee.dir
+  size: 113190168
+  nfiles: 4
+  hash: md5
+  path: edges2shoes_cyclegan_model
