@@ -1,0 +1,6 @@
+outs:
+- md5: 5807379c1d8d44d7bf57cda3c40aa0f3.dir
+  size: 228815972
+  nfiles: 2
+  hash: md5
+  path: label2gta_pix2pix_model
