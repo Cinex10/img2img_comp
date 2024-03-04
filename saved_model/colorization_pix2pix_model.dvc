@@ -1,0 +1,6 @@
+outs:
+- md5: 95a391d0703b3706a8f643b869eddc74.dir
+  size: 228787300
+  nfiles: 2
+  hash: md5
+  path: colorization_pix2pix_model

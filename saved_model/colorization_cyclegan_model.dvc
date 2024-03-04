@@ -1,0 +1,6 @@
+outs:
+- md5: 6d7977bdb9f22e6df3b22b2fc52194ec.dir
+  size: 113190168
+  nfiles: 4
+  hash: md5
+  path: colorization_cyclegan_model

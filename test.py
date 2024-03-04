@@ -33,6 +33,8 @@ from data import create_dataset
 from models import create_model
 from util.visualizer import save_images
 from util import html
+from datetime import datetime
+
 
 try:
     import wandb
@@ -72,7 +74,14 @@ if __name__ == '__main__':
         if i >= opt.num_test:  # only apply our model to opt.num_test images.
             break
         model.set_input(data)  # unpack data from data loader
-        model.test()           # run inference
+        if (i==0):
+            before = datetime.now()    
+            model.test()
+            after = datetime.now()
+            d = after - before
+            print(f'Image translating in {d.total_seconds()} seconds')             
+        else:    
+            model.test()           # run inference
         visuals = model.get_current_visuals()  # get image results
         img_path = model.get_image_paths()     # get image paths
         if i % 5 == 0:  # save images to an HTML file
