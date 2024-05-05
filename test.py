@@ -27,7 +27,7 @@ See training and test tips at: https://github.com/junyanz/pytorch-CycleGAN-and-p
 See frequently asked questions at: https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/docs/qa.md
 """
 import os
-from datasets.calculate_metrics import calculate_metrics
+#from datasets.calculate_metrics import calculate_metrics
 from options.test_options import TestOptions
 from data import create_dataset
 from models import create_model
@@ -92,5 +92,5 @@ if __name__ == '__main__':
     image_dir = webpage.get_image_dir()
     fake_folder = os.path.join(image_dir,opt.fake)
     real_folder = os.path.join(image_dir,opt.real)
-    calculate_metrics(fake_folder=fake_folder,real_folder=real_folder,use_wandb=opt.use_wandb,name=opt.name)
+    #calculate_metrics(fake_folder=fake_folder,real_folder=real_folder,use_wandb=opt.use_wandb,name=opt.name)
     webpage.save()  # save the HTML
