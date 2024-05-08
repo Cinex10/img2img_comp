@@ -28,21 +28,26 @@ See frequently asked questions at: https://github.com/junyanz/pytorch-CycleGAN-a
 """
 import os
 #from datasets.calculate_metrics import calculate_metrics
+from models.cycle_gan_model import CycleGANModel
 from options.test_options import TestOptions
 from data import create_dataset
 from models import create_model
 from util.visualizer import save_images
 from util import html
 from datetime import datetime
-
+from lightning.fabric import Fabric
+import torch
+import numpy as np
 
 try:
     import wandb
 except ImportError:
     print('Warning: wandb package cannot be found. The option "--use_wandb" will result in error.')
 
+torch.set_float32_matmul_precision('high')
 
 if __name__ == '__main__':
+    fabric = Fabric(accelerator="auto", devices=1,precision="bf16-mixed")
     opt = TestOptions().parse()  # get test options
     # hard-code some parameters for test
     opt.num_threads = 0   # test code only supports num_threads = 0
@@ -51,9 +56,9 @@ if __name__ == '__main__':
     opt.no_flip = True    # no flip; comment this line if results on flipped images are needed.
     opt.display_id = -1   # no visdom display; the test code saves the results to a HTML file.
     dataset = create_dataset(opt)  # create a dataset given opt.dataset_mode and other options
-    model = create_model(opt)      # create a model given opt.model and other options
+    model = create_model(opt,fabric)      # create a model given opt.model and other options
     model.setup(opt)               # regular setup: load and print networks; create schedulers
-
+    dataloader = fabric.setup_dataloaders(dataset.dataloader)   
     # initialize logger
     if opt.use_wandb:
         wandb_run = wandb.init(project=opt.wandb_project_name, name=opt.name, config=opt) if not wandb.run else wandb.run
@@ -70,7 +75,7 @@ if __name__ == '__main__':
     # For [CycleGAN]: It should not affect CycleGAN as CycleGAN uses instancenorm without dropout.
     if opt.eval:
         model.eval()
-    for i, data in enumerate(dataset):
+    for i, data in enumerate(dataloader):
         if i >= opt.num_test:  # only apply our model to opt.num_test images.
             break
         model.set_input(data)  # unpack data from data loader
@@ -90,7 +95,10 @@ if __name__ == '__main__':
         
     #print(f'Calculate metrics between {real_visual} and {fake_visual}')
     image_dir = webpage.get_image_dir()
-    fake_folder = os.path.join(image_dir,opt.fake)
-    real_folder = os.path.join(image_dir,opt.real)
+    #fake_folder = os.path.join(image_dir,opt.fake)
+    #real_folder = os.path.join(image_dir,opt.real)
     #calculate_metrics(fake_folder=fake_folder,real_folder=real_folder,use_wandb=opt.use_wandb,name=opt.name)
+    if (isinstance(model,CycleGANModel)):
+        print(f'inference time for a->b : {np.array(model.a_b_infrence_times).mean()}')
+        print(f'inference time for b->a : {np.array(model.b_a_infrence_times).mean()}')
     webpage.save()  # save the HTML
