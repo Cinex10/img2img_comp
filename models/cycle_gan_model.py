@@ -118,8 +118,10 @@ class CycleGANModel(BaseModel):
             # initialize optimizers; schedulers will be automatically created by function <BaseModel.setup>.
             self.optimizer_G = torch.optim.Adam(itertools.chain(self.gen.netG_A.parameters(), self.gen.netG_B.parameters()), lr=opt.lr, betas=(opt.beta1, 0.999))
             self.optimizer_D = torch.optim.Adam(itertools.chain(self.desc.netD_A.parameters(), self.desc.netD_B.parameters()), lr=opt.lr, betas=(opt.beta1, 0.999))
-            self.gen,self.optimizer_G = self.fabric.setup(self.gen,self.optimizer_G) 
-            self.desc,self.optimizer_D = self.fabric.setup(self.desc,self.optimizer_D) 
+            if self.opt.bf16:
+                self.gen,self.optimizer_G = self.fabric.setup(self.gen,self.optimizer_G) 
+                self.desc,self.optimizer_D = self.fabric.setup(self.desc,self.optimizer_D) 
+            
             self.optimizers.append(self.optimizer_G)
             self.optimizers.append(self.optimizer_D)
 
@@ -255,8 +257,10 @@ class CycleGANModel(BaseModel):
         loss_D_fake = self.criterionGAN(pred_fake, False)
         # Combined loss and calculate gradients
         loss_D = (loss_D_real + loss_D_fake) * 0.5
-        #loss_D.backward()
-        self.fabric.backward(loss_D)
+        if self.opt.bf16:
+            self.fabric.backward(loss_D)
+        else:
+            loss_D.backward()
         return loss_D
 
     def backward_D_A(self):
@@ -297,8 +301,10 @@ class CycleGANModel(BaseModel):
         self.loss_cycle_B = self.criterionCycle(self.rec_B, self.real_B) * lambda_B
         # combined loss and calculate gradients
         self.loss_G = self.loss_G_A + self.loss_G_B + self.loss_cycle_A + self.loss_cycle_B + self.loss_idt_A + self.loss_idt_B
-        #self.loss_G.backward()
-        self.fabric.backward(self.loss_G)
+        if self.opt.bf16:
+            self.fabric.backward(self.loss_G)
+        else:
+            self.loss_G.backward()
 
     def optimize_parameters(self):
         """Calculate losses, gradients, and update network weights; called in every training iteration"""

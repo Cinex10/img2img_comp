@@ -29,7 +29,7 @@ class ColorizationModel(Pix2PixModel):
         parser.set_defaults(dataset_mode='colorization')
         return parser
 
-    def __init__(self, opt):
+    def __init__(self, opt,fabric):
         """Initialize the class.
 
         Parameters:
@@ -41,7 +41,7 @@ class ColorizationModel(Pix2PixModel):
         we convert the Lab image 'fake_B' (inherited from Pix2pixModel) to a RGB image 'fake_B_rgb'.
         """
         # reuse the pix2pix model
-        Pix2PixModel.__init__(self, opt)
+        Pix2PixModel.__init__(self, opt,fabric)
         # specify the images to be visualized.
         self.visual_names = ['real_A', 'real_B_rgb', 'fake_B_rgb']
 

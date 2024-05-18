@@ -29,6 +29,7 @@ See frequently asked questions at: https://github.com/junyanz/pytorch-CycleGAN-a
 import os
 #from datasets.calculate_metrics import calculate_metrics
 from models.cycle_gan_model import CycleGANModel
+from models.pix2pix_model import Pix2PixModel
 from options.test_options import TestOptions
 from data import create_dataset
 from models import create_model
@@ -47,8 +48,12 @@ except ImportError:
 torch.set_float32_matmul_precision('high')
 
 if __name__ == '__main__':
-    fabric = Fabric(accelerator="auto", devices=1,precision="bf16-mixed")
     opt = TestOptions().parse()  # get test options
+    fabric = None
+    if opt.bf16:
+        print('Initializing Fabric to train the model with bf16 mixed  precision')
+        fabric = Fabric(accelerator="auto", devices=1,precision="bf16-mixed")
+        fabric.launch()
     # hard-code some parameters for test
     opt.num_threads = 0   # test code only supports num_threads = 0
     opt.batch_size = 1    # test code only supports batch_size = 1
@@ -58,7 +63,7 @@ if __name__ == '__main__':
     dataset = create_dataset(opt)  # create a dataset given opt.dataset_mode and other options
     model = create_model(opt,fabric)      # create a model given opt.model and other options
     model.setup(opt)               # regular setup: load and print networks; create schedulers
-    dataloader = fabric.setup_dataloaders(dataset.dataloader)   
+    dataloader = fabric.setup_dataloaders(dataset.dataloader) if opt.bf16 else dataset.dataloader
     # initialize logger
     if opt.use_wandb:
         wandb_run = wandb.init(project=opt.wandb_project_name, name=opt.name, config=opt) if not wandb.run else wandb.run
@@ -80,11 +85,7 @@ if __name__ == '__main__':
             break
         model.set_input(data)  # unpack data from data loader
         if (i==0):
-            before = datetime.now()    
             model.test()
-            after = datetime.now()
-            d = after - before
-            print(f'Image translating in {d.total_seconds()} seconds')             
         else:    
             model.test()           # run inference
         visuals = model.get_current_visuals()  # get image results
@@ -101,4 +102,6 @@ if __name__ == '__main__':
     if (isinstance(model,CycleGANModel)):
         print(f'inference time for a->b : {np.array(model.a_b_infrence_times).mean()}')
         print(f'inference time for b->a : {np.array(model.b_a_infrence_times).mean()}')
+    if (isinstance(model,Pix2PixModel)):
+        print(f'inference time: {np.array(model.infrence_times).mean()}')
     webpage.save()  # save the HTML

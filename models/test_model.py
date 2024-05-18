@@ -28,7 +28,7 @@ class TestModel(BaseModel):
 
         return parser
 
-    def __init__(self, opt):
+    def __init__(self, opt,fabric):
         """Initialize the pix2pix class.
 
         Parameters:

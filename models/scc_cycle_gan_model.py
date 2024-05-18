@@ -111,6 +111,7 @@ class SCCCycleGANModel(BaseModel):
         if is_train:
             parser.add_argument('--lambda_A', type=float, default=10.0, help='weight for cycle loss (A -> B -> A)')
             parser.add_argument('--lambda_B', type=float, default=10.0, help='weight for cycle loss (B -> A -> B)')
+            parser.add_argument('--lambda_SCC', type=float, default=0.9, help='lambda SCC')
             parser.add_argument('--lambda_identity', type=float, default=0.5, help='use identity mapping. Setting lambda_identity other than 0 has an effect of scaling the weight of the identity mapping loss. For example, if the weight of the identity loss should be 10 times smaller than the weight of the reconstruction loss, please set lambda_identity = 0.1')
             parser.add_argument('--lambda_GAN_A', type=float, default=1.0, help='weight for GAN loss (A -> B )')
             parser.add_argument('--lambda_GAN_B', type=float, default=1.0, help='weight for GAN loss (B -> A)')
@@ -186,9 +187,10 @@ class SCCCycleGANModel(BaseModel):
             self.optimizer_D_pixel = torch.optim.Adam(itertools.chain(self.desc_pixel.netD_A_pixel.parameters(), self.desc_pixel.netD_B_pixel.parameters()),
                                                     lr=opt.lr, betas=(opt.beta1, 0.999))
             
-            self.gen,self.optimizer_G = self.fabric.setup(self.gen,self.optimizer_G) 
-            self.desc,self.optimizer_D = self.fabric.setup(self.desc,self.optimizer_D) 
-            self.desc_pixel,self.optimizer_D_pixel = self.fabric.setup(self.desc_pixel,self.optimizer_D_pixel) 
+            if self.opt.bf16:
+                self.gen,self.optimizer_G = self.fabric.setup(self.gen,self.optimizer_G) 
+                self.desc,self.optimizer_D = self.fabric.setup(self.desc,self.optimizer_D) 
+                self.desc_pixel,self.optimizer_D_pixel = self.fabric.setup(self.desc_pixel,self.optimizer_D_pixel) 
             
             self.optimizers.append(self.optimizer_G)
             self.optimizers.append(self.optimizer_D)
@@ -321,8 +323,10 @@ class SCCCycleGANModel(BaseModel):
         loss_D_fake = self.criterionGAN(pred_fake, False)
         # Combined loss and calculate gradients
         loss_D = (loss_D_real + loss_D_fake) * 0.5
-        #loss_D.backward()
-        self.fabric.backward(loss_D)
+        if self.opt.bf16:
+            self.fabric.backward(loss_D)
+        else:
+            loss_D.backward()
         return loss_D
 
     def backward_D_A(self):
@@ -376,8 +380,10 @@ class SCCCycleGANModel(BaseModel):
             self.loss_SCC = self.loss_SCC_A + self.loss_SCC_B
         # combined loss and calculate gradients
         self.loss_G = self.loss_G_A + self.loss_G_B + self.loss_cycle_A + self.loss_cycle_B + self.loss_idt_A + self.loss_idt_B + self.loss_SCC
-        #self.loss_G.backward()
-        self.fabric.backward(self.loss_G)
+        if self.opt.bf16:
+            self.fabric.backward(self.loss_G)
+        else:
+            self.loss_G.backward()
 
     def optimize_parameters(self):
         """Calculate losses, gradients, and update network weights; called in every training iteration"""

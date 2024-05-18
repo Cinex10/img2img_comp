@@ -29,9 +29,12 @@ import torch
 torch.set_float32_matmul_precision('high')
 
 if __name__ == '__main__':
-    fabric = Fabric(accelerator="auto", devices=1,precision="bf16-mixed")
-    fabric.launch()
     opt = TrainOptions().parse()   # get training options
+    fabric = None
+    if opt.bf16:
+        print('Initializing Fabric to train the model with bf16 mixed  precision')
+        fabric = Fabric(accelerator="auto", devices=1,precision="bf16-mixed")
+        fabric.launch()
     dataset = create_dataset(opt)  # create a dataset given opt.dataset_mode and other options
     dataset_size = len(dataset)    # get the number of images in the dataset.
     print('The number of training images = %d' % dataset_size)
@@ -39,7 +42,7 @@ if __name__ == '__main__':
     model.setup(opt)               # regular setup: load and print networks; create schedulers
     visualizer = Visualizer(opt)   # create a visualizer that display/save images and plots
     total_iters = 0                # the total number of training iterations
-    dataloader = fabric.setup_dataloaders(dataset.dataloader)    
+    dataloader = fabric.setup_dataloaders(dataset.dataloader) if opt.bf16 else dataset.dataloader
     for epoch in range(opt.epoch_count, opt.n_epochs + opt.n_epochs_decay + 1):    # outer loop for different epochs; we save the model by <epoch_count>, <epoch_count>+<save_latest_freq>
         epoch_start_time = time.time()  # timer for entire epoch
         iter_data_time = time.time()    # timer for data loading per iteration

@@ -1,3 +1,4 @@
+from datetime import datetime
 import torch
 from .base_model import BaseModel
 from . import networks
@@ -36,13 +37,15 @@ class Pix2PixModel(BaseModel):
 
         return parser
 
-    def __init__(self, opt):
+    def __init__(self, opt,fabric):
         """Initialize the pix2pix class.
 
         Parameters:
             opt (Option class)-- stores all the experiment flags; needs to be a subclass of BaseOptions
         """
         BaseModel.__init__(self, opt)
+        self.fabric = fabric
+        self.infrence_times = []
         # specify the training losses you want to print out. The training/test scripts will call <BaseModel.get_current_losses>
         self.loss_names = ['G_GAN', 'G_L1', 'D_real', 'D_fake']
         # specify the images you want to save/display. The training/test scripts will call <BaseModel.get_current_visuals>
@@ -67,6 +70,10 @@ class Pix2PixModel(BaseModel):
             # initialize optimizers; schedulers will be automatically created by function <BaseModel.setup>.
             self.optimizer_G = torch.optim.Adam(self.netG.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
             self.optimizer_D = torch.optim.Adam(self.netD.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
+            
+            if opt.bf16:
+                self.netG,self.optimizer_G = self.fabric.setup(self.netG,self.optimizer_G)
+                self.netD,self.optimizer_D = self.fabric.setup(self.netD,self.optimizer_D)
             self.optimizers.append(self.optimizer_G)
             self.optimizers.append(self.optimizer_D)
 
@@ -85,7 +92,11 @@ class Pix2PixModel(BaseModel):
 
     def forward(self):
         """Run forward pass; called by both functions <optimize_parameters> and <test>."""
+        before = datetime.now()    
         self.fake_B = self.netG(self.real_A)  # G(A)
+        after = datetime.now()   
+        d = after - before
+        self.infrence_times.append(d)
 
     def backward_D(self):
         """Calculate GAN loss for the discriminator"""
@@ -99,7 +110,10 @@ class Pix2PixModel(BaseModel):
         self.loss_D_real = self.criterionGAN(pred_real, True)
         # combine loss and calculate gradients
         self.loss_D = (self.loss_D_fake + self.loss_D_real) * 0.5
-        self.loss_D.backward()
+        if self.opt.bf16:
+            self.fabric.backward(self.loss_D)
+        else:
+            self.loss_D.backward()
 
     def backward_G(self):
         """Calculate GAN and L1 loss for the generator"""
@@ -111,7 +125,10 @@ class Pix2PixModel(BaseModel):
         self.loss_G_L1 = self.criterionL1(self.fake_B, self.real_B) * self.opt.lambda_L1
         # combine loss and calculate gradients
         self.loss_G = self.loss_G_GAN + self.loss_G_L1
-        self.loss_G.backward()
+        if self.opt.bf16:
+            self.fabric.backward(self.loss_G)
+        else:
+            self.loss_G.backward()
 
     def optimize_parameters(self):
         self.forward()                   # compute fake images: G(A)
